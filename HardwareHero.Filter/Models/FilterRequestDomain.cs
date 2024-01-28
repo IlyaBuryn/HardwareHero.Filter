@@ -10,9 +10,10 @@ namespace HardwareHero.Filter.Models
         }
 
         public List<Expression<Func<T, bool>>?> SelectionExpressions { get; init; }
-        public PageRequestInfo? PageRequestInfo { get; init; }
-        public SortByRequestInfo? SortByRequestInfo { get; init; }
-        public GroupByRequestInfo? GroupByRequestInfo { get; init; }
+
+        public PageRequestInfo? PageRequestInfo { get; set; }
+        public SortByRequestInfo? SortByRequestInfo { get; set; }
+        public GroupByRequestInfo? GroupByRequestInfo { get; set; }
 
 
         public virtual T SelectionPattern(T refItem)
@@ -22,12 +23,12 @@ namespace HardwareHero.Filter.Models
 
         public virtual IQueryable<T?>? GroupedPattern(IQueryable<IGrouping<object, T?>> groups)
         {
-            return new List<T?>().AsQueryable();
+            return groups.SelectMany(x => x).Distinct();
         }
 
         protected void AddExpression(Expression<Func<T, bool>> expression)
         {
-            if (SelectionExpressions != null && SelectionExpressions.Count != 0)
+            if (SelectionExpressions != null)
             {
                 SelectionExpressions.Add(expression);
             }
