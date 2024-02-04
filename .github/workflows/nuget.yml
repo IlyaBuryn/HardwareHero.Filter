@@ -11,7 +11,7 @@ on:
         - master
 
 env:
-  PROJECT_PATH: "HardwareHero.Filter.csproj"
+  PROJECT_PATH: "HardwareHero.Filter/HardwareHero.Filter.csproj"
   PACKAGE_OUTPUT_DIRECTORY: ${{ github.workspace }}\output
   NUGET_SOURCE_URL: "https://api.nuget.org/v3/index.json"
 
