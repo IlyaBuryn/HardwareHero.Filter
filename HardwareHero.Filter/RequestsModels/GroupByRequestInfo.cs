@@ -1,4 +1,4 @@
-﻿namespace HardwareHero.Filter.Models
+﻿namespace HardwareHero.Filter.RequestsModels
 {
     public class GroupByRequestInfo
     {

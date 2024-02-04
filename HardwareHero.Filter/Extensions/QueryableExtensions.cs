@@ -1,19 +1,20 @@
 ﻿using HardwareHero.Filter.Exceptions;
-using HardwareHero.Filter.Models;
+using HardwareHero.Filter.RequestsModels;
+using HardwareHero.Filter.Responses;
 using HardwareHero.Filter.Utils;
 
 namespace HardwareHero.Filter.Extensions
 {
     public static class QueryableExtensions
     {
-        public static IQueryable<T?>? ApplyFilter<T>
+        public static QueryableResponse<T> ApplyFilter<T>
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
             if (filter.GetExpressions() == null || filter.GetExpressions().Count == 0)
             {
-                return source;
+                return new(source, new FilterPropertyException(nameof(ApplyFilter), nameof(filter.GetExpressions)));
             }
 
             try
@@ -27,22 +28,22 @@ namespace HardwareHero.Filter.Extensions
 
                 }
 
-                return source;
+                return new(source);
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.ToString());
+                return new(source, ex);
             }
         }
 
-        public static IQueryable<T?>? ApplyOrderBy<T>
+        public static QueryableResponse<T> ApplyOrderBy<T>
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
             
             if (filter.SortByRequestInfo == null || filter.SortByRequestInfo.Property == null)
             {
-                return source;
+                return new(source, new FilterPropertyException(nameof(ApplyOrderBy), nameof(filter.SortByRequestInfo)));
             }
 
             try
@@ -58,27 +59,31 @@ namespace HardwareHero.Filter.Extensions
                         order = tmp;
                     }
 
-                    return SortByRequestInfo.SortOrderMatches[order] == SortOrderType.Asc
+                    source = SortByRequestInfo.SortOrderMatches[order] == SortOrderType.Asc
                         ? source!.OrderBy(expression)
                         : source!.OrderByDescending(expression);
-                }
 
-                return source;
+                    return new(source);
+                }
+                else
+                {
+                    return new(source, "OrderBy expression was null");
+                }
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.ToString());
+                return new(source, ex);
             }
         }
 
-        public static IQueryable<T?>? ApplyGroupBy<T>
+        public static QueryableResponse<T> ApplyGroupBy<T>
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
             if (filter.GroupByRequestInfo == null || filter.GroupByRequestInfo.PropertyName == null)
             {
-                return source;
+                return new(source, new FilterPropertyException(nameof(ApplyGroupBy), nameof(filter.GroupByRequestInfo)));
             }
 
             try
@@ -88,42 +93,46 @@ namespace HardwareHero.Filter.Extensions
                 if (expression != null)
                 {
                     var groupedQuery = source!.GroupBy(expression!);
-                    return filter.GroupedPattern(groupedQuery);
+                    source = filter.GroupedPattern(groupedQuery);
+                    
+                    return new(source);
                 }
-
-                return source;
+                else
+                {
+                    return new(source, "GroupBy expression was null");
+                }
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.ToString());
+                return new(source, ex);
             }
         }
 
-        public static IQueryable<T?>? ApplySelection<T>
+        public static QueryableResponse<T> ApplySelection<T>
             (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
             source = source!.Select(item => item != null ? filter!.SelectionPattern(item) : item);
 
-            return source;
+            return new(source);
         }
 
-        public static (IQueryable<T?>?, int) ApplyPagination<T>
+        public static QueryableResponse<T> ApplyPagination<T>
             (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
             if (filter!.PageRequestInfo == null)
             {
-                return (source, -1);
+                return new (source, new FilterPropertyException(nameof(ApplyPagination), nameof(filter.PageRequestInfo)));
             }
 
             int skip = (filter.PageRequestInfo.PageNumber - 1) * filter.PageRequestInfo.PageSize;
             IQueryable<T?> result = source!.Skip(skip).Take(filter.PageRequestInfo.PageSize);
             var totalPageCount = (int)Math.Ceiling((double)source!.Count() / filter.PageRequestInfo.PageSize);
 
-            return (result, totalPageCount);
+            return new (result, null, new PageResponseInfo(filter.PageRequestInfo, totalPageCount));
         }
 
         private static void CheckFilterAndSource<T>(IQueryable<T?>? source, FilterRequestDomain<T>? filter)

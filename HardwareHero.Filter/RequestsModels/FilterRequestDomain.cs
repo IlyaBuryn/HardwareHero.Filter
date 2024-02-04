@@ -1,19 +1,21 @@
 ﻿using System.Linq.Expressions;
 
-namespace HardwareHero.Filter.Models
+namespace HardwareHero.Filter.RequestsModels
 {
     public abstract class FilterRequestDomain<T>
     {
+        public PageRequestInfo? PageRequestInfo { get; set; } = new();
+        public SortByRequestInfo? SortByRequestInfo { get; set; }
+        public GroupByRequestInfo? GroupByRequestInfo { get; set; }
+
+
+
         private readonly List<Expression<Func<T, bool>>?> SelectionExpressions;
 
         public FilterRequestDomain()
         {
             SelectionExpressions = new();
         }
-
-        public PageRequestInfo? PageRequestInfo { get; set; } = new();
-        public SortByRequestInfo? SortByRequestInfo { get; set; }
-        public GroupByRequestInfo? GroupByRequestInfo { get; set; }
 
 
         public virtual T SelectionPattern(T refItem)
@@ -25,6 +27,7 @@ namespace HardwareHero.Filter.Models
         {
             return groups.SelectMany(x => x).Distinct();
         }
+
 
         protected void AddExpression(Expression<Func<T, bool>> expression)
         {

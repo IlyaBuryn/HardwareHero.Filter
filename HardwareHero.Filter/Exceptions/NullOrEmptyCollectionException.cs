@@ -7,8 +7,8 @@
             : base($"Collection was null or empty!")
         { }
 
-        public NullOrEmptyCollectionException(string entity)
-            : base($"{entity} - was null or empty!")
+        public NullOrEmptyCollectionException(string collection)
+            : base($"{collection} - was null or empty!")
         { }
     }
 }

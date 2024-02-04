@@ -2,13 +2,11 @@ name: "Deploy NuGet Package"
 
 on:
   push:
-    branches:
-      - master
-    # tags:
-    #   - "v*"
-    workflow_dispatch:
-      branches:
-        - master
+    tags:
+      - v*
+    # workflow_dispatch:
+    #   branches:
+    #     - master
 
 env:
   PROJECT_PATH: "HardwareHero.Filter/HardwareHero.Filter.csproj"
@@ -24,6 +22,10 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v2
 
+      - name: "Exit if not on master branch"
+        if: endsWith(github.ref, 'master') == false
+        run: exit -1
+
       - name: "Install dotnet"
         uses: actions/setup-dotnet@v1
         with:
@@ -35,16 +37,15 @@ jobs:
       - name: "Build project"
         run: dotnet build ${{ env.PROJECT_PATH }} --no-restore --configuration Release
 
-      # - name: "Get version"
-      #   id: version
-      #   uses: Im-Fran/version-from-tag-action@v1.0.3
-      #   with:
-      #     remove-first-character: "v"
-      #     version-variable-name: "VERSION"
+      - name: "Get version"
+        id: version
+        uses: Im-Fran/version-from-tag-action@v1.0.3
+        with:
+          remove-first-character: "v"
+          version-variable-name: "VERSION"
 
-      # -p:PackageVersion=${{ env.VERSION }}
       - name: "Pack project"
-        run: dotnet pack ${{ env.PROJECT_PATH }} --no-restore --no-build --configuration Release --include-symbols -p:SymbolPackageFormat=snupkg --output ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
+        run: dotnet pack ${{ env.PROJECT_PATH }} --no-restore --no-build --configuration Release --include-symbols -p:SymbolPackageFormat=snupkg -p:PackageVersion=${{ env.VERSION }} --output ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
 
       - name: "Push package"
         run: dotnet nuget push ${{ env.PACKAGE_OUTPUT_DIRECTORY }}\*.nupkg -k ${{ secrets.NUGET_AUTH_TOKEN }} -s ${{ env.NUGET_SOURCE_URL }}

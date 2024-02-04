@@ -1,4 +1,4 @@
-﻿using HardwareHero.Filter.Models;
+﻿using HardwareHero.Filter.RequestsModels;
 using HardwareHero.Filter.Options;
 
 namespace HardwareHero.Filter.Extensions
