@@ -11,7 +11,7 @@ namespace HardwareHero.Filter.Models
             SelectionExpressions = new();
         }
 
-        public PageRequestInfo PageRequestInfo { get; set; } = new();
+        public PageRequestInfo? PageRequestInfo { get; set; } = new();
         public SortByRequestInfo? SortByRequestInfo { get; set; }
         public GroupByRequestInfo? GroupByRequestInfo { get; set; }
 
