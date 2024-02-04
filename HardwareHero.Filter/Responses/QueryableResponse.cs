@@ -19,7 +19,7 @@
 
         public void SetException(Exception exception)
         {
-            this.Message = exception.Message;
+            Message = exception.Message;
             IsError = true;
         }
 
