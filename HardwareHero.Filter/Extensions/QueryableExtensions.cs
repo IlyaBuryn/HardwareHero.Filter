@@ -11,14 +11,14 @@ namespace HardwareHero.Filter.Extensions
         {
             CheckFilterAndSource(source, filter);
 
-            if (filter.SelectionExpressions == null || filter.SelectionExpressions.Count == 0)
+            if (filter.GetExpressions() == null || filter.GetExpressions().Count == 0)
             {
                 return source;
             }
 
             try
             {
-                foreach (var expression in filter.SelectionExpressions)
+                foreach (var expression in filter.GetExpressions())
                 {
                     if (expression != null)
                     {

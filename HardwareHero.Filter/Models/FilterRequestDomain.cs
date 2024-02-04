@@ -4,14 +4,14 @@ namespace HardwareHero.Filter.Models
 {
     public abstract class FilterRequestDomain<T>
     {
+        private readonly List<Expression<Func<T, bool>>?> SelectionExpressions;
+
         public FilterRequestDomain()
         {
             SelectionExpressions = new();
         }
 
-        public List<Expression<Func<T, bool>>?> SelectionExpressions { get; init; }
-
-        public PageRequestInfo? PageRequestInfo { get; set; }
+        public PageRequestInfo PageRequestInfo { get; set; } = new();
         public SortByRequestInfo? SortByRequestInfo { get; set; }
         public GroupByRequestInfo? GroupByRequestInfo { get; set; }
 
@@ -33,5 +33,7 @@ namespace HardwareHero.Filter.Models
                 SelectionExpressions.Add(expression);
             }
         }
+
+        internal protected List<Expression<Func<T, bool>>?> GetExpressions() => SelectionExpressions;
     }
 }
