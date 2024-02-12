@@ -7,17 +7,30 @@
 
     public class SortByRequestInfo
     {
-        public static Dictionary<string, SortOrderType> SortOrderMatches { get; } = new()
-        {
-            { "asc", SortOrderType.Asc },
-            { "0", SortOrderType.Asc },
-            { "desc", SortOrderType.Desc },
-            { "1", SortOrderType.Desc },
-        };
-
         public SortByRequestInfo() { }
 
-        public string? Property { get; init; }
+        public string? PropertyName { get; init; }
         public string? SortOrder { get; init; } = "asc";
+
+        public SortOrderType CastToEnumSortOrderType()
+        {
+            var sortOrderTypeString = SortOrder?.ToLower();
+
+            Dictionary<string, SortOrderType> sortOrderMatches = new()
+            {
+                { "asc", SortOrderType.Asc },
+                { "0", SortOrderType.Asc },
+
+                { "desc", SortOrderType.Desc },
+                { "1", SortOrderType.Desc },
+            };
+
+            if (sortOrderTypeString == null || !sortOrderMatches.ContainsKey(sortOrderTypeString))
+            {
+                return SortOrderType.Asc;
+            }
+
+            return sortOrderMatches[sortOrderTypeString];
+        }
     }
 }

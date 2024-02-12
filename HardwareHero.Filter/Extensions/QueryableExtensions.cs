@@ -2,6 +2,7 @@
 using HardwareHero.Filter.RequestsModels;
 using HardwareHero.Filter.Responses;
 using HardwareHero.Filter.Utils;
+using System.Linq.Expressions;
 
 namespace HardwareHero.Filter.Extensions
 {
@@ -19,14 +20,35 @@ namespace HardwareHero.Filter.Extensions
 
             try
             {
-                foreach (var expression in filter.GetExpressions())
-                {
-                    if (expression != null)
-                    {
-                        source = source!.Where(expression);
-                    }
+                var expressions = filter.GetExpressions();
 
+                if (expressions == null || expressions.Count == 0)
+                {
+                    return new(source);
                 }
+
+                var param = expressions[0]?.Parameters[0];
+
+                if (param == null)
+                {
+                    throw new Exception("Unable to get the parameter of the expression!");
+                }
+
+                Expression<Func<T, bool>> combined = expressions[0]!;
+
+                for (int i = 1; i < expressions.Count; i++)
+                {
+                    if (expressions[i] != null)
+                    {
+                        var visitor = new ReplaceExpressionVisitor(expressions[i].Parameters[0], param);
+                        var newExp = visitor.Visit(expressions[i]) as Expression<Func<T, bool>>;
+
+                        var body = Expression.AndAlso(combined.Body, newExp.Body);
+                        combined = Expression.Lambda<Func<T, bool>>(body, param);
+                    }
+                }
+
+                source = source!.Where(combined);
 
                 return new(source);
             }
@@ -41,25 +63,20 @@ namespace HardwareHero.Filter.Extensions
         {
             CheckFilterAndSource(source, filter);
             
-            if (filter.SortByRequestInfo == null || filter.SortByRequestInfo.Property == null)
+            if (filter.SortByRequestInfo == null || filter.SortByRequestInfo.PropertyName == null)
             {
                 return new(source, new FilterPropertyException(nameof(ApplyOrderBy), nameof(filter.SortByRequestInfo)));
             }
 
             try
             {
-                var expression = FilterHelper.GetExpressionFromString<T>(filter.SortByRequestInfo.Property);
+                var expression = FilterHelper.GetExpressionFromString<T>(filter.SortByRequestInfo.PropertyName);
 
                 if (expression != null)
                 {
-                    var tmp = SortByRequestInfo.SortOrderMatches.First().Key;
-                    var order = filter.SortByRequestInfo.SortOrder?.ToLower() ?? tmp;
-                    if (!SortByRequestInfo.SortOrderMatches.ContainsKey(order))
-                    {
-                        order = tmp;
-                    }
+                    var orderType = filter.SortByRequestInfo.CastToEnumSortOrderType();
 
-                    source = SortByRequestInfo.SortOrderMatches[order] == SortOrderType.Asc
+                    source = orderType == SortOrderType.Asc
                         ? source!.OrderBy(expression)
                         : source!.OrderByDescending(expression);
 
