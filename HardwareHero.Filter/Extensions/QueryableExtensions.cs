@@ -12,43 +12,41 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-
-            if (filter.GetExpressions() == null || filter.GetExpressions().Count == 0)
+            if (source!.Any() == false) 
             {
-                return new(source, new FilterPropertyException(nameof(ApplyFilter), nameof(filter.GetExpressions)));
+                return new(source, "Collection was empty!");
+            }
+
+            var expressions = filter.GetExpressions();
+
+            if (expressions == null || expressions.Count() == 0)
+            {
+                return new(source, new FilterPropertyException(nameof(ApplyFilter), nameof(expressions)).Message);
             }
 
             try
             {
-                var expressions = filter.GetExpressions();
-
-                if (expressions == null || expressions.Count == 0)
-                {
-                    return new(source);
-                }
-
-                var param = expressions[0]?.Parameters[0];
+                var combined = expressions[0];
+                var param = combined?.Parameters[0];
 
                 if (param == null)
                 {
-                    throw new Exception("Unable to get the parameter of the expression!");
+                    return new(source, new Exception("Unable to get the parameter of the expression!"));
                 }
-
-                Expression<Func<T, bool>> combined = expressions[0]!;
 
                 for (int i = 1; i < expressions.Count; i++)
                 {
-                    if (expressions[i] != null)
+                    var expression = expressions[i];
+                    if (expression != null)
                     {
-                        var visitor = new ReplaceExpressionVisitor(expressions[i].Parameters[0], param);
-                        var newExp = visitor.Visit(expressions[i]) as Expression<Func<T, bool>>;
-
-                        var body = Expression.AndAlso(combined.Body, newExp.Body);
+                        var visitor = new ReplaceExpressionVisitor(expression.Parameters[0], param);
+                        var newExp = visitor.Visit(expression) as Expression<Func<T, bool>>;
+                        var body = Expression.AndAlso(combined!.Body, newExp.Body);
                         combined = Expression.Lambda<Func<T, bool>>(body, param);
                     }
                 }
 
-                source = source!.Where(combined);
+                source = source!.Where(combined!);
 
                 return new(source);
             }
@@ -62,23 +60,29 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-            
-            if (filter.SortByRequestInfo == null || filter.SortByRequestInfo.PropertyName == null)
+            if (source!.Any() == false)
             {
-                return new(source, new FilterPropertyException(nameof(ApplyOrderBy), nameof(filter.SortByRequestInfo)));
+                return new(source, "Collection was empty!");
+            }
+
+            var orderByInfo = filter.SortByRequestInfo;
+
+            if (orderByInfo == null || orderByInfo.PropertyName == null)
+            {
+                return new(source, new FilterPropertyException(nameof(ApplyOrderBy), nameof(orderByInfo)).Message);
             }
 
             try
             {
-                var expression = FilterHelper.GetExpressionFromString<T>(filter.SortByRequestInfo.PropertyName);
+                var expression = FilterHelper.GetExpressionFromString<T>(orderByInfo.PropertyName);
 
                 if (expression != null)
                 {
-                    var orderType = filter.SortByRequestInfo.CastToEnumSortOrderType();
+                    var orderType = orderByInfo.CastToEnumSortOrderType();
 
                     source = orderType == SortOrderType.Asc
-                        ? source!.OrderBy(expression)
-                        : source!.OrderByDescending(expression);
+                        ? source!.OrderBy(expression!)
+                        : source!.OrderByDescending(expression!);
 
                     return new(source);
                 }
@@ -97,15 +101,21 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-
-            if (filter.GroupByRequestInfo == null || filter.GroupByRequestInfo.PropertyName == null)
+            if (source!.Any() == false)
             {
-                return new(source, new FilterPropertyException(nameof(ApplyGroupBy), nameof(filter.GroupByRequestInfo)));
+                return new(source, "Collection was empty!");
+            }
+
+            var groupByInfo = filter.GroupByRequestInfo;
+
+            if (groupByInfo == null || groupByInfo.PropertyName == null)
+            {
+                return new(source, new FilterPropertyException(nameof(ApplyGroupBy), nameof(groupByInfo)).Message);
             }
 
             try
             {
-                var expression = FilterHelper.GetExpressionFromString<T>(filter.GroupByRequestInfo.PropertyName); ;
+                var expression = FilterHelper.GetExpressionFromString<T>(groupByInfo.PropertyName); ;
 
                 if (expression != null)
                 {
@@ -129,6 +139,10 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             CheckFilterAndSource(source, filter);
+            if (source!.Any() == false)
+            {
+                return new(source, "Collection was empty!");
+            }
 
             source = source!.Select(item => item != null ? filter!.SelectionPattern(item) : item);
 
@@ -139,6 +153,10 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             CheckFilterAndSource(source, filter);
+            if (source!.Any() == false)
+            {
+                return new(source, "Collection was empty!");
+            }
 
             if (filter!.PageRequestInfo == null)
             {
@@ -159,10 +177,12 @@ namespace HardwareHero.Filter.Extensions
                 throw new ArgumentNullException(nameof(filter));
             }
 
-            if (source == null || source.Count() == 0)
+            if (source == null)
             {
                 throw new NullOrEmptyCollectionException(nameof(source));
             }
         }
+
+        private static bool IsSourceEmpty<T>(IQueryable<T?> source) => source.Count() == 0;
     }
 }

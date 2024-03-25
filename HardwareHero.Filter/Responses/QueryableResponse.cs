@@ -2,30 +2,39 @@
 {
     public class QueryableResponse<T>
     {
+        public IQueryable<T?>? Query { get; set; }
+        public string? WarningMessage { get; set; }
+        public Exception? Error { get; set; }
+        public PageResponseInfo? PageResponseInfo { get; set; }
+
         public QueryableResponse(IQueryable<T?>? query, string? message = null, PageResponseInfo? pageResponseInfo = null)
         {
             Query = query;
-            Message = message;
+            WarningMessage = message;
             PageResponseInfo = pageResponseInfo;
-
-            IsError = false;
         }
 
         public QueryableResponse(IQueryable<T?>? query, Exception exception)
         {
             Query = query;
-            SetException(exception);
+            Error = exception;
         }
 
-        public void SetException(Exception exception)
+        public IQueryable<T?>? CatchQuery()
         {
-            Message = exception.Message;
-            IsError = true;
-        }
+            if (Error != null)
+            {
+                throw Error;
+            }
 
-        public IQueryable<T?>? Query { get; set; }
-        public string? Message { get; set; }
-        public bool IsError { get; set; }
-        public PageResponseInfo? PageResponseInfo { get; set; }
+            return Query;
+        }
+    }
+
+    [Serializable]
+    public class QueryableResponseException : Exception
+    {
+        public QueryableResponseException(string message)
+            : base(message) { }
     }
 }
