@@ -5,17 +5,14 @@ namespace HardwareHero.Filter.RequestsModels
 {
     public class SortByRequestInfo<T> where T : class
     {
-        public SortByRequestInfo()
-        {
-            InitOrderByExpression();
-        }
+        public SortByRequestInfo() { }
 
-        public Expression<Func<T, object>>? OrderByExpression { get; private set; }
+        internal Expression<Func<T, object>>? OrderByExpression { get; private set; }
 
         public string? PropertyName { get; init; }
         public bool OrderByDescending { get; init; } = true;
 
-        private void InitOrderByExpression()
+        internal void InitOrderByExpression()
         {
             if (PropertyName != null && PropertyName != string.Empty)
             {

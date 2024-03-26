@@ -1,20 +1,19 @@
 ﻿using HardwareHero.Filter.Utils;
 using System.Linq.Expressions;
+using System.Text.Json.Serialization;
 
 namespace HardwareHero.Filter.RequestsModels
 {
     public class GroupByRequestInfo<T> where T : class
     {
-        public GroupByRequestInfo()
-        {
-            InitGroupByExpression();
-        }
+        public GroupByRequestInfo() { }
 
-        public Expression<Func<T, object>>? GroupByExpression { get; private set; }
+        internal Expression<Func<T, object>>? GroupByExpression { get; private set; }
 
+        [JsonPropertyOrder(1)]
         public string? PropertyName { get; set; }
 
-        private void InitGroupByExpression()
+        internal void InitGroupByExpression()
         {
             if (PropertyName != null && PropertyName != string.Empty)
             {

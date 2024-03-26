@@ -44,6 +44,8 @@ namespace HardwareHero.Filter.Extensions
                 return new(source, new FilterException("No expressions for sorting!"));
             }
 
+            orderByInfo.InitOrderByExpression();
+
             try
             {
                 var expression = orderByInfo.OrderByExpression;
@@ -78,6 +80,8 @@ namespace HardwareHero.Filter.Extensions
             {
                 return new(source, new FilterException("No expressions for grouping!"));
             }
+
+            groupByInfo.InitGroupByExpression();
 
             try
             {
