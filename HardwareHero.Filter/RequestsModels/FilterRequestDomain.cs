@@ -1,44 +1,44 @@
-﻿using System.Linq.Expressions;
+﻿using HardwareHero.Filter.Extensions;
+using System.Linq.Expressions;
 
 namespace HardwareHero.Filter.RequestsModels
 {
-    public abstract class FilterRequestDomain<T>
+    public abstract class FilterRequestDomain<T> where T : class
     {
+        private Expression<Func<T, bool>>? _filterExpression;
+        private Expression<Func<IGrouping<object, T?>, IQueryable<T>>>? _groupByTransformation;
+
         public PageRequestInfo? PageRequestInfo { get; set; }
-        public SortByRequestInfo? SortByRequestInfo { get; set; }
-        public GroupByRequestInfo? GroupByRequestInfo { get; set; }
+        public SortByRequestInfo<T>? SortByRequestInfo { get; set; }
+        public GroupByRequestInfo<T>? GroupByRequestInfo { get; set; }
 
-        private readonly List<Expression<Func<T, bool>>?> SelectionExpressions;
+        public Func<T?, T?> TransformationPattern { get; set; }
 
-        public FilterRequestDomain()
+        public FilterRequestDomain() { }
+
+        public virtual void SetFilterExpression() { }
+
+        protected void AddFilterCondition(Expression<Func<T, bool>> condition)
         {
-            SelectionExpressions = new();
-        }
-
-
-        public virtual T SelectionPattern(T refItem)
-        {
-            return refItem;
-        }
-
-        public virtual IQueryable<T?>? GroupedPattern(IQueryable<IGrouping<object, T?>> groups)
-        {
-            return groups.SelectMany(x => x).Distinct();
-        }
-
-
-        protected void AddExpression(Expression<Func<T, bool>>? expression)
-        {
-            if (SelectionExpressions != null)
+            if (_filterExpression == null)
             {
-                SelectionExpressions.Add(expression);
+                _filterExpression = condition;
             }
             else
             {
-                throw new NullReferenceException("The collection of expressions was Null. Maybe you have not implemented the basic constructor?");
+                _filterExpression = _filterExpression.And(condition);
             }
         }
 
-        internal protected List<Expression<Func<T, bool>>?> GetExpressions() => SelectionExpressions;
+        protected void AddGroupByTransformation(Expression<Func<IGrouping<object, T?>, IQueryable<T>>> condition)
+        {
+            _groupByTransformation = condition;
+        }
+        
+        internal protected Expression<Func<T, bool>>? GetFilterExpression() => 
+            _filterExpression;
+
+        internal protected Expression<Func<IGrouping<object, T?>, IQueryable<T>>>? GetGroupByTransformation() =>
+            _groupByTransformation;
     }
 }

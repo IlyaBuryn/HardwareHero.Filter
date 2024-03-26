@@ -1,8 +1,6 @@
 ﻿using HardwareHero.Filter.Exceptions;
 using HardwareHero.Filter.RequestsModels;
 using HardwareHero.Filter.Responses;
-using HardwareHero.Filter.Utils;
-using System.Linq.Expressions;
 
 namespace HardwareHero.Filter.Extensions
 {
@@ -12,47 +10,25 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-            if (source!.Any() == false) 
-            {
-                return new(source, "Collection was empty!");
-            }
 
-            var expressions = filter.GetExpressions();
+            filter.SetFilterExpression();
 
-            if (expressions == null || expressions.Count() == 0)
+            var expression = filter.GetFilterExpression();
+
+            if (expression == null)
             {
-                return new(source, new FilterPropertyException(nameof(ApplyFilter), nameof(expressions)).Message);
+                return new(source, new FilterException("No expressions for filtering!"));
             }
 
             try
             {
-                var combined = expressions[0];
-                var param = combined?.Parameters[0];
-
-                if (param == null)
-                {
-                    return new(source, new Exception("Unable to get the parameter of the expression!"));
-                }
-
-                for (int i = 1; i < expressions.Count; i++)
-                {
-                    var expression = expressions[i];
-                    if (expression != null)
-                    {
-                        var visitor = new ReplaceExpressionVisitor(expression.Parameters[0], param);
-                        var newExp = visitor.Visit(expression) as Expression<Func<T, bool>>;
-                        var body = Expression.AndAlso(combined!.Body, newExp.Body);
-                        combined = Expression.Lambda<Func<T, bool>>(body, param);
-                    }
-                }
-
-                source = source!.Where(combined!);
+                source = source!.Where(expression!);
 
                 return new(source);
             }
             catch (Exception ex)
             {
-                return new(source, ex);
+                return new(source, new FilterException(ex.Message));
             }
         }
 
@@ -60,40 +36,34 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-            if (source!.Any() == false)
-            {
-                return new(source, "Collection was empty!");
-            }
 
             var orderByInfo = filter.SortByRequestInfo;
 
-            if (orderByInfo == null || orderByInfo.PropertyName == null)
+            if (orderByInfo == null)
             {
-                return new(source, new FilterPropertyException(nameof(ApplyOrderBy), nameof(orderByInfo)).Message);
+                return new(source, new FilterException("No expressions for sorting!"));
             }
 
             try
             {
-                var expression = FilterHelper.GetExpressionFromString<T>(orderByInfo.PropertyName);
+                var expression = orderByInfo.OrderByExpression;
 
                 if (expression != null)
                 {
-                    var orderType = orderByInfo.CastToEnumSortOrderType();
-
-                    source = orderType == SortOrderType.Asc
-                        ? source!.OrderBy(expression!)
-                        : source!.OrderByDescending(expression!);
+                    source = orderByInfo.OrderByDescending
+                        ? source!.OrderByDescending(expression!)
+                        : source!.OrderBy(expression!);
 
                     return new(source);
                 }
                 else
                 {
-                    return new(source, "OrderBy expression was null");
+                    return new(source, new FilterException("An error occurred while creating the expression!"));
                 }
             }
             catch (Exception ex)
             {
-                return new(source, ex);
+                return new(source, new FilterException(ex.Message));
             }
         }
 
@@ -101,37 +71,41 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-            if (source!.Any() == false)
-            {
-                return new(source, "Collection was empty!");
-            }
 
             var groupByInfo = filter.GroupByRequestInfo;
 
-            if (groupByInfo == null || groupByInfo.PropertyName == null)
+            if (groupByInfo == null)
             {
-                return new(source, new FilterPropertyException(nameof(ApplyGroupBy), nameof(groupByInfo)).Message);
+                return new(source, new FilterException("No expressions for grouping!"));
             }
 
             try
             {
-                var expression = FilterHelper.GetExpressionFromString<T>(groupByInfo.PropertyName); ;
+                var expression = groupByInfo.GroupByExpression;
+                var transformation = filter.GetGroupByTransformation();
 
                 if (expression != null)
                 {
                     var groupedQuery = source!.GroupBy(expression!);
-                    source = filter.GroupedPattern(groupedQuery);
-                    
+                    if (transformation == null)
+                    {
+                        source = groupedQuery.SelectMany(g => g);
+                    }
+                    else
+                    {
+                        source = groupedQuery.SelectMany(g => transformation.Compile()(g));
+                    }
+                                        
                     return new(source);
                 }
                 else
                 {
-                    return new(source, "GroupBy expression was null");
+                    return new(source, new FilterException("An error occurred while creating the expression!"));
                 }
             }
             catch (Exception ex)
             {
-                return new(source, ex);
+                return new(source, new FilterException(ex.Message));
             }
         }
 
@@ -139,12 +113,8 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             CheckFilterAndSource(source, filter);
-            if (source!.Any() == false)
-            {
-                return new(source, "Collection was empty!");
-            }
 
-            source = source!.Select(item => item != null ? filter!.SelectionPattern(item) : item);
+            source = source!.Select(item => filter!.TransformationPattern.Invoke(item));
 
             return new(source);
         }
@@ -155,34 +125,39 @@ namespace HardwareHero.Filter.Extensions
             CheckFilterAndSource(source, filter);
             if (source!.Any() == false)
             {
-                return new(source, "Collection was empty!");
+                return new(source, new FilterException("Collection was empty!"));
             }
 
-            if (filter!.PageRequestInfo == null)
+            var page = filter!.PageRequestInfo;
+
+            if (page == null)
             {
-                return new (source, new FilterPropertyException(nameof(ApplyPagination), nameof(filter.PageRequestInfo)));
+                return new (source, new FilterException("No page info!"));
             }
 
-            int skip = (filter.PageRequestInfo.PageNumber - 1) * filter.PageRequestInfo.PageSize;
-            IQueryable<T?> result = source!.Skip(skip).Take(filter.PageRequestInfo.PageSize);
-            var totalPageCount = (int)Math.Ceiling((double)source!.Count() / filter.PageRequestInfo.PageSize);
+            int skip = (page.PageNumber - 1) * page.PageSize;
+            IQueryable<T?> result = source!.Skip(skip).Take(page.PageSize);
+            var totalPageCount = (int)Math.Ceiling((double)source!.Count() / page.PageSize);
 
-            return new (result, null, new PageResponseInfo(filter.PageRequestInfo, totalPageCount));
+            return new(null, new PageResponseInfo(page, totalPageCount));
         }
 
-        private static void CheckFilterAndSource<T>(IQueryable<T?>? source, FilterRequestDomain<T>? filter)
+        private static void CheckFilterAndSource<T>(IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             if (filter == null)
             {
-                throw new ArgumentNullException(nameof(filter));
+                throw new FilterException(typeof(FilterRequestDomain<T>));
             }
 
             if (source == null)
             {
-                throw new NullOrEmptyCollectionException(nameof(source));
+                throw new FilterException(typeof(IQueryable<T?>));
+            }
+
+            if (source!.Any() == false)
+            {
+                throw new FilterException("Collection was empty!");
             }
         }
-
-        private static bool IsSourceEmpty<T>(IQueryable<T?> source) => source.Count() == 0;
     }
 }

@@ -1,36 +1,26 @@
-﻿namespace HardwareHero.Filter.RequestsModels
-{
-    public enum SortOrderType
-    {
-        Asc = 0, Desc = 1
-    }
+﻿using HardwareHero.Filter.Utils;
+using System.Linq.Expressions;
 
-    public class SortByRequestInfo
+namespace HardwareHero.Filter.RequestsModels
+{
+    public class SortByRequestInfo<T> where T : class
     {
-        public SortByRequestInfo() { }
+        public SortByRequestInfo()
+        {
+            InitOrderByExpression();
+        }
+
+        public Expression<Func<T, object>>? OrderByExpression { get; private set; }
 
         public string? PropertyName { get; init; }
-        public string? SortOrder { get; init; } = "asc";
+        public bool OrderByDescending { get; init; } = true;
 
-        public SortOrderType CastToEnumSortOrderType()
+        private void InitOrderByExpression()
         {
-            var sortOrderTypeString = SortOrder?.ToLower();
-
-            Dictionary<string, SortOrderType> sortOrderMatches = new()
+            if (PropertyName != null && PropertyName != string.Empty)
             {
-                { "asc", SortOrderType.Asc },
-                { "0", SortOrderType.Asc },
-
-                { "desc", SortOrderType.Desc },
-                { "1", SortOrderType.Desc },
-            };
-
-            if (sortOrderTypeString == null || !sortOrderMatches.ContainsKey(sortOrderTypeString))
-            {
-                return SortOrderType.Asc;
+                OrderByExpression = FilterHelper.GetExpressionFromString<T>(PropertyName);
             }
-
-            return sortOrderMatches[sortOrderTypeString];
         }
     }
 }

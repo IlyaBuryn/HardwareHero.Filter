@@ -5,7 +5,7 @@ namespace HardwareHero.Filter.Extensions
 {
     public static class FilterExtensions
     {
-        public static void ApplyPageSizeOptions<T>(this FilterRequestDomain<T> filter, IPageSizeOptions options)
+        public static void ApplyPageSizeOptions<T>(this FilterRequestDomain<T> filter, IPageSizeOptions options) where T : class
         {
             if (filter.PageRequestInfo == null)
             {

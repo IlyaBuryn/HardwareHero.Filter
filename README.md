@@ -4,6 +4,20 @@ A small library that allows you to create your own filters for collections of th
 
 ## Usage
 
+#### v1.1.0
+
+Expressions that were created in extension methods are moved directly to SortByRequestInfo and GroupByRequestInfo objects.
+
+The GroupBy operation now contains a grouping transformation to an IQueryable. To use your pattern for transformation you need to call `AddGroupByTransformation` method inside your filter.
+
+You can also still use transformation of collection objects without performing grouping, but now a delegate is used instead of the SetSelectionPattern method:
+
+```csharp
+public Func<T?, T?> TransformationPattern { get; set; }
+```
+
+If the source and filter arguments in the extension methods are null, a `FilterException` will be thrown. In all other cases of error, the exception will be placed in QueryableResponse.
+
 #### v1.0.5
 
 #### Selection
