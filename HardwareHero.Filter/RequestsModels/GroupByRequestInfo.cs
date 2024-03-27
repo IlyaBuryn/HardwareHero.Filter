@@ -1,6 +1,5 @@
 ﻿using HardwareHero.Filter.Utils;
 using System.Linq.Expressions;
-using System.Text.Json.Serialization;
 
 namespace HardwareHero.Filter.RequestsModels
 {
@@ -10,7 +9,6 @@ namespace HardwareHero.Filter.RequestsModels
 
         internal Expression<Func<T, object>>? GroupByExpression { get; private set; }
 
-        [JsonPropertyOrder(1)]
         public string? PropertyName { get; set; }
 
         internal void InitGroupByExpression()

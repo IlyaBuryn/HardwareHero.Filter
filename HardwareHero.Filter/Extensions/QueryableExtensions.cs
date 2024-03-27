@@ -13,7 +13,7 @@ namespace HardwareHero.Filter.Extensions
 
             filter.SetFilterExpression();
 
-            var expression = filter.GetFilterExpression();
+            var expression = filter.FilterExpression;
 
             if (expression == null)
             {
@@ -86,18 +86,17 @@ namespace HardwareHero.Filter.Extensions
             try
             {
                 var expression = groupByInfo.GroupByExpression;
-                var transformation = filter.GetGroupByTransformation();
 
                 if (expression != null)
                 {
                     var groupedQuery = source!.GroupBy(expression!);
-                    if (transformation == null)
+                    if (filter!.GroupByTransformation == null)
                     {
                         source = groupedQuery.SelectMany(g => g);
                     }
                     else
                     {
-                        source = groupedQuery.SelectMany(g => transformation.Compile()(g));
+                        source = filter!.GroupByTransformation.Invoke(groupedQuery);
                     }
                                         
                     return new(source);
@@ -117,6 +116,11 @@ namespace HardwareHero.Filter.Extensions
             (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
         {
             CheckFilterAndSource(source, filter);
+
+            if (filter.TransformationPattern == null)
+            {
+                return new(source, new FilterException($"No delegate in `{nameof(filter.TransformationPattern)}`!"));
+            }
 
             source = source!.Select(item => filter!.TransformationPattern.Invoke(item));
 
