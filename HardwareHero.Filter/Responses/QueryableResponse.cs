@@ -2,22 +2,24 @@
 
 namespace HardwareHero.Filter.Responses
 {
-    public class QueryableResponse<T>
+    public class QueryableResponse<T> where T : class
     {
         public IQueryable<T?>? Query { get; set; }
-        public FilterException? Error { get; set; }
-        public PageResponseInfo? PageResponseInfo { get; set; }
+        public List<FilterException?> Errors { get; set; } = new();
+        public bool IsSuccessful { get; set; }
 
-        public QueryableResponse(IQueryable<T?>? query, PageResponseInfo? pageResponseInfo = null)
+        public QueryableResponse(IQueryable<T?>? query)
         {
             Query = query;
-            PageResponseInfo = pageResponseInfo;
+            Errors = new();
+            IsSuccessful = true;
         }
 
         public QueryableResponse(IQueryable<T?>? query, FilterException? exception)
         {
             Query = query;
-            Error = exception;
+            Errors.Add(exception);
+            IsSuccessful = false;
         }
     }
 }

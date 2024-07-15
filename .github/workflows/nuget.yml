@@ -4,13 +4,8 @@ on:
   push:
     tags:
       - v*
-  pull_request:
     branches:
       - master
-    types:
-      - opened
-      - synchronize
-      - reopened
 
 env:
   PROJECT_PATH: "HardwareHero.Filter/HardwareHero.Filter.csproj"
