@@ -28,11 +28,11 @@ namespace HardwareHero.Filter.Tests.Data
         public Expression<Func<Component, bool>>? OnGetFilterExpression()
             => GetFilterExpression(nameof(Component));
 
-        public Expression<Func<Component, object>>? OnGetGroupExpression(string groupByProperty)
-            => GetGroupExpression(GroupByProperty);
+        public Expression<Func<Component, object>>? OnGetGroupExpression(string prop)
+            => GetGroupExpression(prop);
 
-        public Expression<Func<Component, object>>? OnGetSortExpression(string? sortByProperty)
-            => GetSortExpression(sortByProperty);
+        public Expression<Func<Component, object>>? OnGetSortExpression(string? prop)
+            => GetSortExpression(prop);
 
         public void SetupFilterExpressions()
         {
