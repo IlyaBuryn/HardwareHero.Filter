@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>HardwareHero.SelectionFilter</PackageId>
-    <Version>2.0.0</Version>
+    <Version>2.0.2</Version>
     <Authors>Ilya Buryn</Authors>
     <PackageId>HardwareHero.Filter</PackageId>
     <Description>A small library that allows you to create your own filters for collections of the IQueryable type in the form of requests from the client. The filter allows you to assign selection expressions to various properties, control the selection result using OrderBy and GroupBy, and use pagination.</Description>
