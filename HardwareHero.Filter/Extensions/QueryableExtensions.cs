@@ -1,4 +1,5 @@
 ﻿using HardwareHero.Filter.Exceptions;
+using HardwareHero.Filter.Operations;
 using HardwareHero.Filter.RequestsModels;
 using HardwareHero.Filter.Responses;
 
@@ -7,150 +8,99 @@ namespace HardwareHero.Filter.Extensions
     public static class QueryableExtensions
     {
         public static QueryableResponse<T> ApplyFilter<T>
-            (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
+            (this IQueryable<T?>? source, IFilterable<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
-            filter.SetFilterExpression();
-
-            var expression = filter.FilterExpression;
-
-            if (expression == null)
+            var predicate = filter.OnGetFilterExpression();
+            if (predicate == null)
             {
                 return new(source, new FilterException("No expressions for filtering!"));
             }
 
-            try
-            {
-                source = source!.Where(expression!);
+            var query = source!.Where(predicate);
 
-                return new(source);
-            }
-            catch (Exception ex)
-            {
-                return new(source, new FilterException(ex.Message));
-            }
+            return new(query);
+
         }
 
         public static QueryableResponse<T> ApplyOrderBy<T>
-            (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
+            (this IQueryable<T?>? source, ISortable<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
-            var orderByInfo = filter.SortByRequestInfo;
-
-            if (orderByInfo == null)
+            var sortBy = filter.OnGetSortExpression(filter.SortByProperty);
+            if (sortBy == null)
             {
                 return new(source, new FilterException("No expressions for sorting!"));
             }
 
-            orderByInfo.InitOrderByExpression();
+            var query = filter.SortByDescending ? 
+                source!.OrderByDescending(sortBy!) :
+                source!.OrderBy(sortBy!);
+
+            return new(query);
+        }
+
+        public static PageResponse<T> ApplyPagination<T>
+            (this IQueryable<T?>? source, IPaginable filter) where T : class
+        {
+            CheckFilterAndSource(source, filter);
+            IQueryable<T?>? pageQuery;
+            uint totalPages = 0;
 
             try
             {
-                var expression = orderByInfo.OrderByExpression;
-
-                if (expression != null)
-                {
-                    source = orderByInfo.OrderByDescending
-                        ? source!.OrderByDescending(expression!)
-                        : source!.OrderBy(expression!);
-
-                    return new(source);
-                }
-                else
-                {
-                    return new(source, new FilterException("An error occurred while creating the expression!"));
-                }
+                pageQuery = source!.Skip((int)((filter.PageNumber - 1) * filter.PageSize)).Take((int)filter.PageSize);
+                totalPages = (uint)Math.Ceiling((double)source!.Count() / filter.PageSize);
             }
             catch (Exception ex)
             {
-                return new(source, new FilterException(ex.Message));
+                return new(new(source, new FilterException(ex.Message)), 0, filter.PageNumber, filter.PageSize);
             }
+
+            return new(new(pageQuery), totalPages, filter.PageNumber, filter.PageSize);
         }
 
-        public static QueryableResponse<T> ApplyGroupBy<T>
-            (this IQueryable<T?>? source, FilterRequestDomain<T> filter) where T : class
+        public static GroupResponse<T> ApplyGroupBy<T>
+            (this IQueryable<T?>? source, IGroupable<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
-            var groupByInfo = filter.GroupByRequestInfo;
-
-            if (groupByInfo == null)
+            var groupBy = filter.OnGetGroupExpression(filter.GroupByProperty);
+            if (groupBy == null)
             {
-                return new(source, new FilterException("No expressions for grouping!"));
+                return new(new FilterException("No expressions for grouping!"));
             }
 
-            groupByInfo.InitGroupByExpression();
-
+            var query = source!.GroupBy(groupBy);
             try
             {
-                var expression = groupByInfo.GroupByExpression;
-
-                if (expression != null)
-                {
-                    var groupedQuery = source!.GroupBy(expression!);
-                    if (filter!.GroupByTransformation == null)
-                    {
-                        source = groupedQuery.SelectMany(g => g);
-                    }
-                    else
-                    {
-                        source = filter!.GroupByTransformation.Invoke(groupedQuery);
-                    }
-                                        
-                    return new(source);
-                }
-                else
-                {
-                    return new(source, new FilterException("An error occurred while creating the expression!"));
-                }
+                var groupQuery = query.ToGroupQueryable<T>();
+                return new(groupQuery);
             }
             catch (Exception ex)
             {
-                return new(source, new FilterException(ex.Message));
+                return new(new FilterException(ex.Message));
             }
         }
 
-        public static QueryableResponse<T> ApplySelection<T>
-            (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
+        public static QueryableResponse<object> ApplySelection<T>
+            (this IQueryable<T?>? source, ISelectable<T> filter) where T : class
         {
             CheckFilterAndSource(source, filter);
 
-            if (filter.TransformationPattern == null)
-            {
-                return new(source, new FilterException($"No delegate in `{nameof(filter.TransformationPattern)}`!"));
-            }
+            var query = source!.Select(item => filter.SetupSelectFields(item));
 
-            source = source!.Select(item => filter!.TransformationPattern.Invoke(item));
-
-            return new(source);
+            return new(query);
         }
 
-        public static QueryableResponse<T> ApplyPagination<T>
-            (this IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
+        private static List<GroupItem<T>> ToGroupQueryable<T>(this IQueryable<IGrouping<object, T?>>? query) where T : class
         {
-            CheckFilterAndSource(source, filter);
-            if (source!.Any() == false)
-            {
-                return new(source, new FilterException("Collection was empty!"));
-            }
-
-            var page = filter!.PageRequestInfo;
-
-            if (page == null)
-            {
-                return new (source, new FilterException("No page info!"));
-            }
-
-            int skip = (page.PageNumber - 1) * page.PageSize;
-            IQueryable<T?> result = source!.Skip(skip).Take(page.PageSize);
-            var totalPageCount = (int)Math.Ceiling((double)source!.Count() / page.PageSize);
-
-            return new(null, new PageResponseInfo(page, totalPageCount));
+            return query.Select(g => new GroupItem<T>(g.Key.ToString(), g.AsQueryable())).ToList();
         }
 
-        private static void CheckFilterAndSource<T>(IQueryable<T?>? source, FilterRequestDomain<T>? filter) where T : class
+        private static void CheckFilterAndSource<T>(IQueryable<T?>? source, IFilterOperation? filter) where T : class
         {
             if (filter == null)
             {

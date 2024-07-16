@@ -4,6 +4,61 @@ A small library that allows you to create your own filters for collections of th
 
 ## Usage
 
+#### v2.0.0
+
+Now instead of required methods that were hard to understand, there are interfaces for defining operations that you want to use.
+
+All operations implement the basic ( yet empty) `IFilterOperation` operation interface and currently in v2.0.0 there are such operations as `IFilterable<T>`, `IGroupable<T>`, `IPaginable`, `ISortable<T>` and `ISelectable<T>`.
+
+Take for example the Sort operation. For this we implement our own filter class from FilterRequestDomain and also implement the `ISortable<T>` operation interface.
+
+Here is how this interface looks like:
+
+```csharp
+public interface ISortable<T> : IFilterOperation where T : class
+    {
+        string? SortByProperty { get; init; }
+        bool SortByDescending { get; init; }
+        void SetupSortByExpressions();
+        Expression<Func<T, object>>? OnGetSortExpression(string? sortByProperty);
+    }
+```
+
+It's pretty simple: the first two fields are the data that the client passes to us (already been there); `SetupSortByExpressions` is the method where we set expressions and it's worth mentioning that now all expressions are set in advance and will be stored as key-value pairs, where the key is a string.
+
+It might look something like this:
+
+```csharp
+public void SetupSortByExpressions()
+    {
+        SortByExpressions[nameof(Component.Id)] = component => component.Id;
+    }
+```
+
+And it is very important to put the call to this and other Setup methods in the constructor!
+
+```csharp
+public ComponentFilter()
+    {
+        SetupFilterExpressions();
+        SetupSortByExpressions();
+        SetupGroupByExpressions();
+    }
+```
+
+We will also need to implement one more method - in our case it is `OnGetSortExpression`. Roughly speaking, this method specifies which property we use as the key of the desired expression.
+
+I prefer to just use a lambda as this method:
+
+```csharp
+public Expression<Func<Component, object>>? OnGetSortExpression(string? prop))
+    => GetSortExpression(prop);
+```
+
+That's it, now we can use the ApplyOrderBy method and only it, since we have implemented only one operation. 
+
+I would also like to point out that the response model can now depend on which operation you use. For example GroupBy will return GroupResponse instead of QueryableResponse.
+
 #### v1.1.0
 
 Expressions that were created in extension methods are moved directly to SortByRequestInfo and GroupByRequestInfo objects.

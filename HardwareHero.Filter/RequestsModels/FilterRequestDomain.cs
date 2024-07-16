@@ -1,42 +1,33 @@
-﻿using HardwareHero.Filter.Extensions;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 namespace HardwareHero.Filter.RequestsModels
 {
     public abstract class FilterRequestDomain<T> where T : class
     {
-        public PageRequestInfo? PageRequestInfo { get; set; }
-        public SortByRequestInfo<T>? SortByRequestInfo { get; set; }
-        public GroupByRequestInfo<T>? GroupByRequestInfo { get; set; }
+        protected Dictionary<string, Expression<Func<T, object>>?> SortByExpressions { get; set; }
+        protected Dictionary<string, Expression<Func<T, object>>?> GroupByExpressions { get; set; }
+        protected Dictionary<string, Expression<Func<T, bool>>?> FilterExpressions { get; set; }
 
-        internal Func<T?, T?>? TransformationPattern { get; set; }
-        internal Func<IQueryable<IGrouping<object, T?>>?, IQueryable<T>?>? GroupByTransformation { get; set; }
-        internal Expression<Func<T, bool>>? FilterExpression { get; set; }
-
-        public FilterRequestDomain() { }
-
-        public virtual void SetFilterExpression() { }
-
-        protected void AddTransformationPattern(Func<T?, T?> pattern)
+        protected FilterRequestDomain()
         {
-            TransformationPattern = pattern;
+            SortByExpressions = new Dictionary<string, Expression<Func<T, object>>?>();
+            GroupByExpressions = new Dictionary<string, Expression<Func<T, object>>?>();
+            FilterExpressions = new Dictionary<string, Expression<Func<T, bool>>?>();
         }
 
-        protected void AddGroupByTransformationPattern(Func<IQueryable<IGrouping<object, T?>>?, IQueryable<T>?>? pattern)
+        public virtual Expression<Func<T, object>>? GetSortExpression(string sortByProperty)
         {
-            GroupByTransformation = pattern;
+            return SortByExpressions.ContainsKey(sortByProperty) ? SortByExpressions[sortByProperty] : null;
         }
 
-        protected void AddFilterCondition(Expression<Func<T, bool>> condition)
+        public virtual Expression<Func<T, bool>>? GetFilterExpression(string filterByProperty)
         {
-            if (FilterExpression == null)
-            {
-                FilterExpression = condition;
-            }
-            else
-            {
-                FilterExpression = FilterExpression.And(condition);
-            }
+            return FilterExpressions.ContainsKey(filterByProperty) ? FilterExpressions[filterByProperty] : null;
+        }
+
+        public virtual Expression<Func<T, object>>? GetGroupExpression(string groupByProperty)
+        {
+            return GroupByExpressions.ContainsKey(groupByProperty) ? GroupByExpressions[groupByProperty] : null;
         }
     }
 }
