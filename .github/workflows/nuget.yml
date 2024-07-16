@@ -9,6 +9,7 @@ on:
 
 env:
   PROJECT_PATH: "HardwareHero.Filter/HardwareHero.Filter.csproj"
+  TEST_PROJECT_PATH: "HardwareHero.Filter/HardwareHero.Filter.Tests.csproj"
   PACKAGE_OUTPUT_DIRECTORY: ${{ github.workspace }}\output
   NUGET_SOURCE_URL: "https://api.nuget.org/v3/index.json"
 
@@ -31,7 +32,10 @@ jobs:
 
       - name: "Build project"
         run: dotnet build ${{ env.PROJECT_PATH }} --no-restore --configuration Release
-
+      
+      - name: "Run tests"
+        run: dotnet test ${{ env.TEST_PROJECT_PATH }} --no-restore --configuration Release --logger "trx;LogFileName=test_results.trx"
+        
       - name: "Get version"
         id: version
         uses: Im-Fran/version-from-tag-action@v1.0.3
